@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+
+from telegram_summary_bot.infrastructure.db.models import Base
+
+
+def create_engine(database_url: str) -> AsyncEngine:
+    return create_async_engine(
+        database_url,
+        future=True,
+        pool_pre_ping=True,
+    )
+
+
+def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(
+        bind=engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+
+
+async def init_database(engine: AsyncEngine) -> None:
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+
+async def dispose_engine(engine: AsyncEngine) -> None:
+    await engine.dispose()

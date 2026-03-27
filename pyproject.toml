@@ -1,0 +1,32 @@
+[project]
+name = "telegram-summary-bot"
+version = "0.1.0"
+description = "Async Telegram group summarizer bot with Jalali date ranges and SQLite retention."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.20.0",
+    "httpx>=0.27.0",
+    "jdatetime>=5.0.0",
+    "pydantic-settings>=2.3.0",
+    "python-telegram-bot>=21.6",
+    "sqlalchemy>=2.0.32",
+]
+
+[project.scripts]
+telegram-summary-bot = "telegram_summary_bot.main:main"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/telegram_summary_bot"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6.2",
+]
