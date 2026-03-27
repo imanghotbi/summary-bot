@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime, timedelta
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import jdatetime
 
@@ -20,13 +20,23 @@ class JalaliDateParseError(ValueError):
     pass
 
 
+def get_timezone(timezone_name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError as exc:
+        raise JalaliDateParseError(
+            f"منطقه زمانی `{timezone_name}` در سیستم در دسترس نیست. اگر روی ویندوز هستید، `uv sync` را اجرا کنید تا بسته tzdata نصب شود."
+        ) from exc
+
+
 def parse_jalali_datetime(value: str, timezone_name: str, *, end_of_day: bool = False) -> datetime:
     cleaned = " ".join(value.strip().split())
+    timezone = get_timezone(timezone_name)
     for date_format in SUPPORTED_FORMATS:
         try:
             jalali_dt = jdatetime.datetime.strptime(cleaned, date_format)
             gregorian = jalali_dt.togregorian()
-            local_dt = gregorian.replace(tzinfo=ZoneInfo(timezone_name))
+            local_dt = gregorian.replace(tzinfo=timezone)
             if "%H" not in date_format:
                 if end_of_day:
                     local_dt = local_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -41,7 +51,7 @@ def parse_jalali_datetime(value: str, timezone_name: str, *, end_of_day: bool = 
 
 
 def format_jalali_datetime(value: datetime, timezone_name: str) -> str:
-    localized = value.astimezone(ZoneInfo(timezone_name))
+    localized = value.astimezone(get_timezone(timezone_name))
     jalali_dt = jdatetime.datetime.fromgregorian(datetime=localized.replace(tzinfo=None))
     return jalali_dt.strftime("%Y-%m-%d %H:%M")
 
@@ -78,7 +88,7 @@ def parse_summary_range(text: str, timezone_name: str) -> tuple[datetime, dateti
 
 def parse_shortcut_range(text: str, timezone_name: str) -> tuple[datetime, datetime] | None:
     normalized = " ".join(text.strip().lower().split())
-    timezone = ZoneInfo(timezone_name)
+    timezone = get_timezone(timezone_name)
     now_local = datetime.now(timezone)
 
     if normalized in {"today", "امروز"}:
