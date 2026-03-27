@@ -32,6 +32,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     await message.reply_text(
         "نمونه استفاده:\n"
+        "/summary today\n"
+        "/summary yesterday\n"
+        "/summary week\n"
+        "/summary 2h\n"
+        "/summary 30m\n\n"
+        "یا بازه کامل جلالی:\n"
         "/summary 1405-01-01 08:00 | 1405-01-01 18:00\n\n"
         "همچنین می‌توانید از `تا` هم استفاده کنید:\n"
         "/summary 1405/01/01 08:00 تا 1405/01/01 18:00"

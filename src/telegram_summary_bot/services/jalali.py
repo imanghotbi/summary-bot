@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import re
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import jdatetime
@@ -12,6 +13,7 @@ SUPPORTED_FORMATS = (
     "%Y-%m-%d",
     "%Y/%m/%d",
 )
+RELATIVE_RANGE_RE = re.compile(r"^(?P<value>\d{1,3})\s*(?P<unit>[mh])$", re.IGNORECASE)
 
 
 class JalaliDateParseError(ValueError):
@@ -48,8 +50,12 @@ def parse_summary_range(text: str, timezone_name: str) -> tuple[datetime, dateti
     body = text.strip()
     if not body:
         raise JalaliDateParseError(
-            "بازه زمانی را بعد از دستور وارد کنید. نمونه: /summary 1405-01-01 08:00 | 1405-01-01 18:00"
+            "بازه زمانی را بعد از دستور وارد کنید. نمونه: /summary today یا /summary 1405-01-01 08:00 | 1405-01-01 18:00"
         )
+
+    shortcut_range = parse_shortcut_range(body, timezone_name)
+    if shortcut_range is not None:
+        return shortcut_range
 
     separators = ("|", " تا ", "\n", " to ")
     parts: list[str] | None = None
@@ -60,7 +66,7 @@ def parse_summary_range(text: str, timezone_name: str) -> tuple[datetime, dateti
 
     if not parts or len(parts) != 2 or not all(parts):
         raise JalaliDateParseError(
-            "بازه زمانی را با `|` یا `تا` جدا کنید. نمونه: 1405-01-01 08:00 | 1405-01-01 18:00"
+            "بازه زمانی را با `|` یا `تا` جدا کنید، یا از میانبرهایی مثل today، yesterday، week، 2h، 30m استفاده کنید."
         )
 
     start_at = parse_jalali_datetime(parts[0], timezone_name)
@@ -68,3 +74,45 @@ def parse_summary_range(text: str, timezone_name: str) -> tuple[datetime, dateti
     if end_at <= start_at:
         raise JalaliDateParseError("زمان پایان باید بعد از زمان شروع باشد.")
     return start_at, end_at
+
+
+def parse_shortcut_range(text: str, timezone_name: str) -> tuple[datetime, datetime] | None:
+    normalized = " ".join(text.strip().lower().split())
+    timezone = ZoneInfo(timezone_name)
+    now_local = datetime.now(timezone)
+
+    if normalized in {"today", "امروز"}:
+        start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        return start_local.astimezone(UTC), now_local.astimezone(UTC)
+
+    if normalized in {"yesterday", "دیروز"}:
+        yesterday = now_local - timedelta(days=1)
+        start_local = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_local = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return start_local.astimezone(UTC), end_local.astimezone(UTC)
+
+    if normalized in {"week", "thisweek", "this_week", "هفته", "این هفته"}:
+        start_local = (now_local - timedelta(days=now_local.weekday())).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        return start_local.astimezone(UTC), now_local.astimezone(UTC)
+
+    match = RELATIVE_RANGE_RE.fullmatch(normalized)
+    if match is None:
+        return None
+
+    value = int(match.group("value"))
+    unit = match.group("unit").lower()
+    if value <= 0:
+        raise JalaliDateParseError("بازه نسبی باید بزرگ‌تر از صفر باشد.")
+
+    if unit == "h":
+        delta = timedelta(hours=value)
+    else:
+        delta = timedelta(minutes=value)
+
+    start_local = now_local - delta
+    return start_local.astimezone(UTC), now_local.astimezone(UTC)

@@ -55,6 +55,11 @@ Commands:
 
 - `/start`
 - `/help`
+- `/summary today`
+- `/summary yesterday`
+- `/summary week`
+- `/summary 2h`
+- `/summary 30m`
 - `/summary 1405-01-01 08:00 | 1405-01-01 18:00`
 - `/summary 1405/01/01 08:00 تا 1405/01/01 18:00`
 
