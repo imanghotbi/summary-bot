@@ -28,7 +28,6 @@ class StoredMessage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
     )
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
